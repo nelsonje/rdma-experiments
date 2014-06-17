@@ -3,12 +3,12 @@
 # set up library 
 #
 set(LIBRARY_SOURCES
-  # nothing yet
+  Verbs.cpp
 )
 add_library(RdmaExperiments
   ${LIBRARY_SOURCES}
 )
-target_link_libraries(RdmaExperiments ${RDMA_EXPERIMENT_LIBS})
+target_link_libraries(RdmaExperiments ${RDMA_EXPERIMENT_LIBS} ${VERBS_LIB})
 add_dependencies(RdmaExperiments all-third-party)
 
 

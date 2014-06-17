@@ -23,3 +23,6 @@
 
 # emacs backup files
 *~
+
+# build files
+/build/*
