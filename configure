@@ -1,0 +1,153 @@
+#!/bin/bash
+#
+# Configure script for RoCEHammer CMake build
+#
+
+#############################################################################
+# first, initialize option parsing library
+#############################################################################
+
+third_party_root="./third-party"
+shflags_src="https://shflags.googlecode.com/files/shflags-1.0.3.tgz"
+shflags_root="${third_party_root}/shflags-1.0.3"
+
+# if we don't have shflags already, get it
+if [[ ! -e "${shflags_root}/src/shflags" ]]; then
+    ( cd "${third_party_root}" && wget -qO- "${shflags_src}" | tar xz )
+fi
+
+# now source shflags
+source "${shflags_root}/src/shflags"      
+
+## error logging function
+err() {
+    echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $@" >&2
+}
+
+#############################################################################
+# now, declare and parse options
+#############################################################################
+
+DEFINE_string 'gen' 'Make' 'Build tool to generate scripts for: {Make|Ninja|Xcode}. Specify multiple with commas.'
+
+DEFINE_string 'mode' 'Release' 'Build mode: {Release|Debug}. Release includes debug symbols.'
+
+DEFINE_string 'cc' '' 'Optional path to alternative C compiler.'
+
+DEFINE_string 'name' '' 'Optional additional name used to distinguish this configuration (e.g. compiler version).'
+
+DEFINE_string 'third_party' ''  'Path to optional pre-build third-party dependencies instead of re-building for each configuration.'
+
+# parse the command line
+FLAGS "$@" || exit $?
+eval set -- "${FLAGS_ARGV}"
+
+#############################################################################
+# prepare to generate CMake configuration
+#############################################################################
+
+# if user specified a C compiler, find the matching C++ compiler
+my_cc="${CC}"
+my_cxx="${CXX}"
+if [[ -n "${FLAGS_cc}" ]]; then
+    my_cc="${FLAGS_cc}"
+    if [[ "${FLAGS_cc}" =~ "bin/gcc" ]]; then
+        my_cxx="${FLAGS_cc/gcc/g++}"
+    fi    
+    if [[ "${FLAGS_cc}" =~ "bin/clang" ]]; then
+        my_cxx="${FLAGS_cc/clang/clang++}"
+    fi
+fi
+
+# check that we have a C and C++ compiler
+if [[ -z "${my_cc}" || -z "${my_cxx}" ]]; then
+    err 'Error: Must specify C compiler (either use '--cc=' flag, or set the environment variables CC & CXX'
+    err 'Hint: if the compiler you want is on your PATH, you can do: --cc=$(which gcc)...'
+    exit 1
+else
+    echo "Using C compiler ${my_cc} and C++ compiler ${my_cxx}."
+fi
+
+# function to generate one configuration.
+# called below for each (generator, mode) pair
+configure() {
+    # configure function args
+    generator="$1"
+    mode="$2"
+    leftover="$3"
+
+    # set generator
+    case "${generator}" in
+        Make)
+            gen_flag="-GUnix Makefiles"
+            ;;
+        Xcode)
+            echo "Note: '--mode' not supported for Xcode, ignoring..."
+            mode=""
+            gen_flag="-GXcode"
+            ;;
+        *)
+            gen_flag="-G${generator}"
+            ;;
+    esac     
+
+    # start command string
+    command="cmake $(pwd)"
+    
+    # set C and C++ compilers
+    command+=" -DCMAKE_C_COMPILER=${my_cc}"
+    command+=" -DCMAKE_CXX_COMPILER=${my_cxx}"
+    command+=" -DBASE_C_COMPILER=${my_cc}"
+    command+=" -DBASE_CXX_COMPILER=${my_cxx}"
+
+    # generate third-party path if necessary
+    if [[ -n "${FLAGS_third_party}" ]]; then
+        command+=" -DTHIRD_PARTY_ROOT:PATH=${FLAGS_third_party}"
+    fi
+
+    # translate mode if necessary
+    case "${mode}" in
+        Debug)   command+=" -DCMAKE_BUILD_TYPE=Debug" ;;
+        Release) command+=" -DCMAKE_BUILD_TYPE=RelWithDebInfo" ;;
+    esac
+
+    # generate build directory name
+    build_dir="build/${generator}"
+    if [[ -n "${mode}" ]]; then
+        build_dir+="+${mode}"
+    fi
+    if [[ -n "${FLAGS_name}" ]]; then
+        build_dir+="+${FLAGS_name}"
+    fi
+    
+    # create build directory
+    ROOT_DIR="$(pwd)"
+    mkdir -p "${build_dir}"
+    cd "${build_dir}"
+    
+    # pass cmake the args we constructed, along with leftover args from original command line
+    echo "${command} ${gen_flag}" ${leftover}
+    if ${command} "${gen_flag}" ${leftover}; then
+        echo "-------------------------------------"
+        echo "created ${build_dir}; to build:"
+        case "${generator}" in
+            Make)  echo "> cd ${build_dir}; make -j" ;;
+            Ninja) echo "> cd ${build_dir}; ninja" ;;
+            Xcode) echo "> cd ${build_dir}; xcodebuild" ;;
+        esac
+        echo "-------------------------------------"
+    fi
+}
+
+#############################################################################
+# now generate CMake configurations
+#############################################################################
+
+# iterate over generator and mode settings, calling configure for each
+for generator in ${FLAGS_gen/,/ }; do
+    for mode in ${FLAGS_mode/,/ }; do
+        configure "${generator}" "${mode}" "$@"
+    done
+done
+
+echo "Done!"
