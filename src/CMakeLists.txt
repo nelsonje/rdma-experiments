@@ -16,3 +16,4 @@ add_dependencies(RdmaExperiments all-third-party)
 
 
 add_rdma_application(helloworld.exe "helloworld.cpp")
+add_rdma_application(experiments.exe "experiments.cpp")
