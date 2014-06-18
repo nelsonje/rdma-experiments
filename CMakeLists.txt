@@ -91,6 +91,36 @@ find_library(VERBS_LIB
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
 
+#####################################
+# Boost
+#####################################
+set(BOOST_COMPONENTS filesystem system unit_test_framework)
+
+# hint for sampa cluster
+set(BOOST_ROOT /sampa/share/gcc-4.8.2/src/boost_1_55_0)
+
+set(Boost_USE_MULTITHREADED OFF)
+find_package(Boost 1.51 COMPONENTS ${BOOST_COMPONENTS} QUIET)
+
+if(NOT Boost_FOUND)
+  set(Boost_USE_MULTITHREADED ON)
+  find_package(Boost 1.51 COMPONENTS ${BOOST_COMPONENTS} QUIET)
+endif()
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIR})
+  link_directories(${Boost_LIBRARY_DIRS})
+  string(REGEX REPLACE "/include" "" BOOST_PREFIX ${Boost_INCLUDE_DIR} )
+  message("-- Boost found:  ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION} -- ${BOOST_PREFIX}")
+  # Boost_LIBRARIES set with the libraries to link against
+  foreach(lib ${Boost_LIBRARY_DIRS})
+    set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}:${lib}")
+  endforeach()
+  
+else()
+  message("-- Boost not found.")
+  message("   !! Will download and build Boost, which may take a while.")
+endif()
+
 
 macro(add_rdma_exe target exe )
   add_executable(${target} EXCLUDE_FROM_ALL ${ARGN})
@@ -98,7 +128,7 @@ macro(add_rdma_exe target exe )
   target_link_libraries(${target} 
     RdmaExperiments
     ${MPI_CXX_LIBRARIES}
-#    ${Boost_LIBRARIES}
+    ${Boost_LIBRARIES}
   )
 endmacro(add_rdma_exe)
 
