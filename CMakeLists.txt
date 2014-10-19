@@ -87,6 +87,10 @@ find_library(VERBS_LIB
   NAMES ibverbs
   HINTS "/usr/lib64")
 
+if(NOT APPLE)
+  list(APPEND ROCEHAMMER_LIBS pthread rt)
+endif()
+
 # MPI (mostly for booting, but we also use MPI communication in some places now)
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
