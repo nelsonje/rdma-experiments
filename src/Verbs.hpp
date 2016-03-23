@@ -29,6 +29,7 @@ namespace RDMA {
     Communicator(): rank(-1), size(-1), locale_rank(-1), locale_size(-1) {}
     void init( int * argc_p, char ** argv_p[] );
     void finalize();
+    void barrier() const;
   };
 
 
@@ -107,6 +108,8 @@ namespace RDMA {
     void finalize();
 
     struct ibv_mr * register_memory_region( void * base, size_t size );
+
+    struct ibv_pd * get_protection_domain() const { return protection_domain; }
 
     void post_send( Core c, struct ibv_send_wr * wr );
   

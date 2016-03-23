@@ -88,6 +88,10 @@ namespace RDMA {
     MPI_CHECK( MPI_Finalize() );
   }
 
+  void Communicator::barrier() const {
+    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+  }
+
 
 
 
@@ -95,13 +99,26 @@ namespace RDMA {
     // get device list
     CHECK_NOTNULL( devices = ibv_get_device_list( &num_devices ) );
 
-    if ( num_devices > 1 ) {
-      LOG(WARNING) << num_devices << "InfiniBand devices detected; using only first one";
-    }
-    device = devices[0];
+    device = NULL;
+    std::string desired_device_name = "mlx4_0";
 
-    DVLOG(5) << "Found InfiniBand device " << ibv_get_device_name( device )
-             << " with guid " << (void*) ntohll( ibv_get_device_guid( device ) );
+    if ( num_devices > 1 ) {
+      LOG(WARNING) << num_devices << " InfiniBand devices detected; using only first one";
+    }
+    //device = devices[0];
+
+    for( int i = 0; i < num_devices; ++i ) {
+      DVLOG(5) << "Found InfiniBand device " << ibv_get_device_name( devices[i] )
+               << " with guid " << (void*) ntohll( ibv_get_device_guid( devices[i] ) );
+      if( desired_device_name == ibv_get_device_name( devices[i] ) ) {
+        device = devices[i];
+      }
+    }
+
+    if( device == NULL ) {
+      LOG(ERROR) << "Didn't find device " << desired_device_name;
+      exit(1);
+    }
     
     // open device and get attributes
     CHECK_NOTNULL( context = ibv_open_device( device ) );
@@ -112,7 +129,7 @@ namespace RDMA {
       
     // choose a port (always port 1 for now) and get attributes
     if( device_attributes.phys_port_cnt > 1 ) {
-      LOG(WARNING) << device_attributes.phys_port_cnt << " ports detected; using only first one";
+      LOG(WARNING) << (int) device_attributes.phys_port_cnt << " ports detected; using only first one";
     }
     port = 1;
     PCHECK( ibv_query_port( context, port, &port_attributes ) >= 0 );
