@@ -30,18 +30,18 @@ namespace verbs {
              << " with keys " << (void*) (uint64_t) mr_->lkey << "/" << (void*) (uint64_t) mr_->rkey;
 
     // distribute rkeys
-    comm_.barrier();
+    MPI_CHECK( MPI_Barrier( comm_.grappa_comm ) );
     rkeys_.reset( new uint32_t[ comm_.size ] );
     MPI_CHECK( MPI_Allgather( &mr_->rkey, 1, MPI_INT32_T,
                               &rkeys_[0], 1, MPI_INT32_T,
-                              MPI_COMM_WORLD ) );
+                              comm_.grappa_comm ) );
 
     // distribute base addresses
-    comm_.barrier();
+    MPI_CHECK( MPI_Barrier( comm_.grappa_comm ) );
     bases_.reset( new void*[ comm_.size ] );
     MPI_CHECK( MPI_Allgather( &buf_, sizeof(buf_), MPI_BYTE,
                               &bases_[0], sizeof(buf_), MPI_BYTE,
-                              MPI_COMM_WORLD ) );
+                              comm_.grappa_comm ) );
 
   }
 

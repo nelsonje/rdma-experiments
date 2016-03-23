@@ -21,11 +21,12 @@ int main(int argc, char * argv[]) {
       WR wr[n];
       WR * wrs = &wr[0];
 
-      //double * data = NULL;
+      double * data = NULL;
       //double data[n];
-      double * data = new double[n]; 
-      //MPI_Win win;
-      //MPI_CHECK( MPI_Win_allocate_shared( sizeof(double) * n, 1, MPI_INFO_NULL, communicator.locale_comm, &data, &win ) );
+      //double * data = new double[n]; 
+      MPI_Win win;
+      MPI_CHECK( MPI_Win_allocate_shared( sizeof(double) * n, 1, MPI_INFO_NULL, communicator.locale_comm, &data, &win ) );
+
       verbs::MemoryRegion mr( communicator, ib, &data[0], sizeof(double) * n );
 
       //double right_data[n];
@@ -88,17 +89,16 @@ int main(int argc, char * argv[]) {
         s->sge.length = sizeof(double);
         s->sge.lkey = right_mr.lkey();
         
-        s->wr.wr_id = 456;
+        s->wr.wr_id = 123;
         s->wr.next = NULL;
         s->wr.sg_list = &s->sge;
         s->wr.num_sge = 1;
-        //s->wr.imm_data = 12345;
+        s->wr.imm_data = 12345;
         //s->wr.send_flags = IBV_SEND_INLINE ;//| IBV_SEND_SIGNALED;
         //s->wr.send_flags = IBV_SEND_SIGNALED;
-        s->wr.send_flags = 0;
         //s->wr.opcode = IBV_WR_RDMA_WRITE_WITH_IMM;
-        s->wr.opcode = IBV_WR_RDMA_WRITE;
         //s->wr.opcode = IBV_WR_SEND;
+        s->wr.opcode = IBV_WR_RDMA_WRITE;
 
         // //s->wr.wr.rdma.remote_addr = (uintptr_t) (&data[(i+1)-tosend] - &data[0] + ptrs[communicator.rank+1]);
         // //s->wr.wr.rdma.remote_addr = (uintptr_t) (&ptrs[communicator.rank+1][(i+1)-tosend]);
@@ -115,7 +115,7 @@ int main(int argc, char * argv[]) {
         LOG(INFO) << "data[0] == " << data[0];
         ib.post_send( communicator.rank+1, &s->wr );
         //ib.post_send( communicator.rank, &s->wr );
-        while(!ib.poll());
+        //while(!ib.poll());
       }
       LOG(INFO) << "data[0] == " << data[0];
     

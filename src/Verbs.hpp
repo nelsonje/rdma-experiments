@@ -7,9 +7,13 @@
 #include <glog/logging.h>
 
 #include <infiniband/arch.h>
-#include <rdma/rdma_cma.h>
+//#include <rdma/rdma_cma.h>
+#include <infiniband/verbs.h>
 
 #include <memory>
+
+DECLARE_int64( max_send_wr );
+DECLARE_int64( n );
 
 typedef int16_t Core;
 
@@ -25,10 +29,16 @@ namespace RDMA {
     int size;
     int locale_rank;
     int locale_size;
+    int locale;
     int locales;
-    Communicator(): rank(-1), size(-1), locale_rank(-1), locale_size(-1) {}
+    std::unique_ptr<int[]> locale_of_rank;
+    MPI_Comm locale_comm; // locale-local communicator
+    MPI_Comm grappa_comm; // grappa-specific communicator
+
+    Communicator(): rank(-1), size(-1), locale_rank(-1), locale_size(-1), locale(-1), locales(-1), locale_of_rank(), locale_comm(), grappa_comm() {}
     void init( int * argc_p, char ** argv_p[] );
     void finalize();
+    const char * hostname() const;
     void barrier() const;
   };
 
@@ -58,6 +68,8 @@ namespace RDMA {
     struct ibv_pd * protection_domain;
 
     struct ibv_cq * completion_queue;
+    int outstanding;
+    int last_outstanding;
 
     static const int completion_queue_depth = 256;
     static const int send_message_depth = 1; // using depth instead
@@ -101,6 +113,8 @@ namespace RDMA {
       , context( NULL )
       , protection_domain( NULL )
       , completion_queue( NULL )
+      , outstanding(0)
+      , last_outstanding(0)
     { }
 
     void init();
@@ -127,6 +141,7 @@ namespace RDMA {
     struct ibv_mr * mr;
     std::unique_ptr< uint32_t[] > rkeys;
     Verbs & ib;
+    bool flag;
   public:
     RDMASharedMemory( Verbs & ib )
       : buf( NULL )
@@ -134,6 +149,7 @@ namespace RDMA {
       , mr( NULL )
       , rkeys()
       , ib( ib )
+      , flag(false)
     { }
 
     ~RDMASharedMemory() {
@@ -141,6 +157,7 @@ namespace RDMA {
     }
   
     void init( size_t newsize = 1L << 30 );
+    void attach( void * buf, size_t size );
 
     void finalize();
 
