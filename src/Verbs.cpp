@@ -109,7 +109,7 @@ namespace RDMA {
   }
 
   void Communicator::barrier() const {
-    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
+    MPI_CHECK( MPI_Barrier( grappa_comm ) );
   }
 
 
@@ -120,10 +120,6 @@ namespace RDMA {
       MPI_CHECK( MPI_Get_processor_name( &name[0], &name_size ) );
     }
     return &name[0];
-  }
-
-  void Communicator::barrier() const {
-    MPI_CHECK( MPI_Barrier( MPI_COMM_WORLD ) );
   }
 
   void Verbs::initialize_device() {
