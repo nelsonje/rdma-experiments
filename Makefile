@@ -23,7 +23,7 @@ DEPS= Makefile MPIConnection.hpp Verbs.hpp MemoryRegion.hpp
 OBJ= MPIConnection.o Verbs.o
 
 # add targets to be cleaned up here
-TARGETS= main
+TARGETS= simple_write
 
 #
 # this Makefile uses implicit build rules.
@@ -34,13 +34,13 @@ TARGETS= main
 #
 
 # rules for an application with a main() function
-main: main.o $(OBJ)
+simple_write: simple_write.o $(OBJ)
 # ensure we rebuild object file if headers or Makefile change
-main.o: $(DEPS)
+simple_write.o: $(DEPS)
 
 
 # overly-broad rule to ensure object files are rebuilt if header files change
 $(OBJ): $(DEPS)
 
 clean:
-	rm -f $(OBJ) $(TARGETS)
+	rm -f $(OBJ) $(TARGETS) $(TARGETS)

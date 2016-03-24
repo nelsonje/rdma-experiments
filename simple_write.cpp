@@ -1,8 +1,8 @@
 //
-// MPI / InfiniBand Verbs demo
+// MPI / InfiniBand Verbs simple write demo
 //
 // Run on Sampa cluster with command like:
-//   make && srun --label --nodes=2 --ntasks-per-node=3 ./main
+//   make && srun --label --nodes=2 --ntasks-per-node=3 ./simple_write
 //
 
 #include "MPIConnection.hpp"
