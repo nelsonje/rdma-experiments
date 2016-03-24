@@ -15,10 +15,11 @@
 
 int main( int argc, char * argv[] ) {
 
+  // set up MPI communication between all processes in job
   MPIConnection m( &argc, &argv );
+
+  // set up IBVerbs queue pairs between all processes in job
   Verbs v( m );
-  
-  m.barrier();
 
 #ifdef VERBOSE
   std::cout << "hostname " << m.hostname()
@@ -31,15 +32,12 @@ int main( int argc, char * argv[] ) {
             << " pid " << getpid()
             << "\n";
 #endif
-  
-  m.barrier();
 
   //
   // verify writes are working by writing a value from each rank to an
-  // array on each rank.
+  // array on every rank. Rank n will write the product n*m into the
+  // nth location of an array on rank m.
   //
-  
-  // the idea is that each rank will 
   
   // create space to store data from remote ranks
   //
@@ -48,39 +46,37 @@ int main( int argc, char * argv[] ) {
   //
   // You can avoid this by using MMAP to get memory at a specified
   // address, or by communicating base addresses between ranks.
-  static int64_t remote_rank_data[ 1 << 20 ] = { -1 }; // 2^20 endpoints should be enough. :-)
+  static int64_t remote_rank_data[ 1 << 20 ]; // 2^20 endpoints should be enough. :-)
+  for( int64_t i = 0; i < m.size; ++i ) {
+    remote_rank_data[i] = -1; // initialize array
+  }
 #ifdef VERBOSE
   std::cout << "Base address of remote_rank_data is " << &remote_rank_data[0] << std::endl;
 #endif
-  for( int64_t i = 0; i < m.size; ++i ) {
-    remote_rank_data[i] = -1;
-  }
     
   // register memory region for this array
   MemoryRegion dest_mr( v, &remote_rank_data[0], sizeof(remote_rank_data) );
 
-  // storage for source data
+  // create storage for source data
   int64_t my_data;
   MemoryRegion source_mr( v, &my_data, sizeof(my_data) );
   
-  // write our rank to remote ranks, one at a time
-
+  // write our rank data to remote ranks, one at a time
   for( int i = 0; i < m.size; ++i ) {
-    ibv_send_wr wr;
-    std::memset(&wr, 0, sizeof(wr));
-
-    ibv_sge sge;
-    std::memset(&sge, 0, sizeof(sge));
-
     // set value to write
     // (product of my rank and the remote rank)
     my_data = i * m.rank; 
     
-    // point scatter/gather element at value
+    // point scatter/gather element at source data
+    ibv_sge sge;
+    std::memset(&sge, 0, sizeof(sge));
     sge.addr = (uintptr_t) source_mr.base();
     sge.length = source_mr.size();
     sge.lkey = source_mr.lkey();
-        
+
+    // create work request for RDMA write
+    ibv_send_wr wr;
+    std::memset(&wr, 0, sizeof(wr));
     wr.wr_id = i;  // unused here
     wr.next = nullptr; // only one send WR in this linked list
     wr.sg_list = &sge;
@@ -104,7 +100,7 @@ int main( int argc, char * argv[] ) {
     }
   }
   
-  // wait for everyone to finish writing
+  // wait for everyone to finish all writes
   m.barrier();
 
   // check that values were written in our local array correctly
@@ -112,6 +108,7 @@ int main( int argc, char * argv[] ) {
   for( int64_t i = 0; i < m.size; ++i ) {
     int64_t expected_value = i * m.rank;
     if( expected_value != remote_rank_data[i] ) {
+      pass = false;
       std::cout << "Rank " << m.rank
                 << " got bad data from rank " << i
                 << ": expected " << expected_value
@@ -125,6 +122,8 @@ int main( int argc, char * argv[] ) {
                          MPI_LAND,  // logical and
                          0,         // destination rank
                          m.main_communicator_ ) );
+
+  // have one rank check the reduced value
   if( 0 == m.rank ){
     if( pass ) {
       std::cout << "PASS: All ranks received correct data." << std::endl;
@@ -132,8 +131,6 @@ int main( int argc, char * argv[] ) {
       std::cout << "FAIL: Some rank(s) received incorrect data!" << std::endl;
     }
   }
-
-  m.barrier();
 
   return 0; 
 }

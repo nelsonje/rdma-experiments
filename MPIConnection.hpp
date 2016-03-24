@@ -4,9 +4,9 @@
 
 #include <mpi.h>
 
-//
-// macro to deal with MPI errors
-//
+///
+/// macro to deal with MPI errors
+///
 #define MPI_CHECK( mpi_call )                                           \
   do {                                                                  \
     int retval;                                                         \
@@ -20,6 +20,19 @@
     }                                                                   \
   } while(0)
 
+///
+/// This class sets up MPI for use on a cluster of multicore nodes
+/// (aka "locales").
+///
+/// It assumes you will be running multiple processes per node, and
+/// gives each process two IDs ("ranks") and synchronization domains:
+///
+///  - one that is valid across all processes on all nodes in the job,
+///    where processes on the same node have contiguous ranks, and
+///
+///  - another that is local to each node/locale, to support
+///  - node-local barriers that other nodes do not participate in.
+///
 class MPIConnection {
 
   // private, modifiable MPI parameters; exposed as const references later
@@ -55,7 +68,9 @@ public:
     ;
   }
 
-  // call in all processes before doing anything with this object
+  /// Set up MPI communication. This should be called in all processes
+  /// before doing anything with this object, either directly or
+  /// through the following constructor.
   void init( int * argc_p, char ** argv_p[] );
 
   // alternative constructor that calls init directly
@@ -78,24 +93,25 @@ public:
     init( argc_p, argv_p );
   }
 
-  // call in all processes before exiting
+  /// Tear down MPI communication. Either call this before exiting, or
+  /// let the destructor do it for you.
   void finalize();
 
-  // destructor ensures finalize has been called
+  /// Destructor ensures finalize has been called.
   ~MPIConnection() {
     finalize();
   }
 
-  // synchronize across all processes
+  /// Synchronize across all processes
   void barrier();
 
-  // synchronize across all processes on node
+  /// Synchronize across all processes on the local node
   void locale_barrier();
 
-  // get hostname of this node
+  /// Get hostname of this node
   const char * hostname();
   
-  // const references to MPI parameters
+  /// const references to MPI parameters
   const int & rank;         // global ID of this core/process
   const int & size;         // total # cores/processes in job
   const int & ranks;        // total # cores/processes in job (alias for size)

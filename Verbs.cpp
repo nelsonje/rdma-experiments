@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+/// Discover local Verbs-capable devices; choose one and prepare it for use.
 void Verbs::initialize_device( const std::string desired_device_name, const int8_t desired_port ) {
   // get device list
   devices = ibv_get_device_list( &num_devices );
@@ -24,14 +25,12 @@ void Verbs::initialize_device( const std::string desired_device_name, const int8
               << " with guid " << (void*) ntohll( ibv_get_device_guid( devices[i] ) )
               << std::endl;
 #endif
-    if( (num_devices > 1) && (desired_device_name != ibv_get_device_name(devices[i])) ) {
-      // if we are choosing between multiple devices and this one's name doesn't match, skip it.
-      continue;
+    if( (num_devices == 1) || (desired_device_name == ibv_get_device_name(devices[i])) ) {
+      // choose this device
+      device = devices[i];
+      device_name = ibv_get_device_name( device );
+      device_guid = ntohll( ibv_get_device_guid( device ) );
     }
-
-    device = devices[i];
-    device_name = ibv_get_device_name( device );
-    device_guid = ntohll( ibv_get_device_guid( device ) );
   }
 
   // ensure we found a device
@@ -40,7 +39,7 @@ void Verbs::initialize_device( const std::string desired_device_name, const int8
     exit(1);
   }
     
-  // open device and get device attributes
+  // open device context and get device attributes
   context = ibv_open_device( device );
   if( !context ) {
     std::cerr << "Failed to get context for device " << device_name << "\n";
@@ -75,9 +74,9 @@ void Verbs::initialize_device( const std::string desired_device_name, const int8
     std::cerr << "Error getting protection domain!\n";
     exit(1);
   }
-  
 }
 
+/// release resources on device in preparation for shutting down
 void Verbs::finalize_device() {
   for( auto endpoint : endpoints ) {
     if( endpoint.queue_pair ) {
@@ -128,7 +127,8 @@ void Verbs::finalize_device() {
   }
 }
 
-void Verbs::connect_queue_pair() {
+/// set up queue pairs for RDMA operations
+void Verbs::connect_queue_pairs() {
   // create shared completion queue
   completion_queue = ibv_create_cq( context,
                                     completion_queue_depth,
@@ -232,8 +232,8 @@ void Verbs::connect_queue_pair() {
       exit(1);
     }
 
-    // in theory, we need to post an empty receive WR to proceed, but
-    // when we're doing RDMA-only stuff it seems to work without one.
+    /// in theory, we need to post an empty receive WR to proceed, but
+    /// when we're doing RDMA-only stuff it seems to work without one.
     // bare_receives[i].wr_id = 0xdeadbeef;
     // bare_receives[i].next = NULL;
     // bare_receives[i].sg_list = NULL;
@@ -253,7 +253,6 @@ void Verbs::connect_queue_pair() {
     attributes.ah_attr.sl = 0;
     attributes.ah_attr.src_path_bits = 0;
     attributes.ah_attr.port_num = port;
-
     retval = ibv_modify_qp( endpoints[i].queue_pair, &attributes, 
                             IBV_QP_STATE | 
                             IBV_QP_AV |
@@ -292,6 +291,7 @@ void Verbs::connect_queue_pair() {
   m.barrier();
 }
 
+/// Register a region of memory with Verbs library
 ibv_mr * Verbs::register_memory_region( void * base, size_t size ) {
   ibv_mr * mr;
   mr = ibv_reg_mr( protection_domain, 
@@ -308,6 +308,7 @@ ibv_mr * Verbs::register_memory_region( void * base, size_t size ) {
   return mr;
 }
 
+/// post a receive request for a remote rank
 void Verbs::post_receive( int remote_rank, ibv_recv_wr * wr ) {
   ibv_recv_wr * bad_wr = nullptr;
 
@@ -323,9 +324,10 @@ void Verbs::post_receive( int remote_rank, ibv_recv_wr * wr ) {
   }
 }
 
+/// post a send request to a remote rank
 void Verbs::post_send( int remote_rank, ibv_send_wr * wr ) {
   ibv_send_wr * bad_wr = nullptr;
-
+  
   int retval = ibv_post_send( endpoints[remote_rank].queue_pair, wr, &bad_wr );
   if( retval < 0 ) {
     perror( "Error posting receive WR" );
@@ -338,6 +340,8 @@ void Verbs::post_send( int remote_rank, ibv_send_wr * wr ) {
   }
 }
 
+/// consume up to max_entries completion queue entries. Returns number
+/// of entries consumed.
 int Verbs::poll( int max_entries ) {
   struct ibv_wc wc;
   int retval = ibv_poll_cq( completion_queue, max_entries, &wc );

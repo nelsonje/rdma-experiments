@@ -1,6 +1,9 @@
 #include "MPIConnection.hpp"
 #include <limits>
 
+/// Set up MPI communication. This should be called in all processes
+/// before doing anything with this object, either directly or through
+/// the constructor that calls it.
 void MPIConnection::init( int * argc_p, char ** argv_p[] ) {
   int initialized = 0;
   MPI_CHECK( MPI_Initialized( &initialized ) );
@@ -72,6 +75,8 @@ void MPIConnection::init( int * argc_p, char ** argv_p[] ) {
   }
 }
 
+/// Tear down MPI communication. Either call this before exiting, or
+/// let the destructor do it for you.
 void MPIConnection::finalize() {
   int finalized = 0;
   MPI_CHECK( MPI_Finalized( &finalized ) );
@@ -82,14 +87,17 @@ void MPIConnection::finalize() {
   }
 }
 
+/// Synchronize across all processes
 void MPIConnection::barrier() {
   MPI_CHECK( MPI_Barrier( main_communicator_ ) );
 }
 
+/// Synchronize across all processes on the local node
 void MPIConnection::locale_barrier() {
   MPI_CHECK( MPI_Barrier( locale_communicator_ ) );
 }
 
+/// Get hostname of this node
 const char * MPIConnection::hostname() {
   static char name[ MPI_MAX_PROCESSOR_NAME ] = {0};
   static int name_size = 0;

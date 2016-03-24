@@ -7,32 +7,53 @@
 
 #include <vector>
 
+///
+/// This class does the bare minimum to up IBVerbs queue pairs between
+/// all processes in an MPI job for RDMA communications. It uses MPI
+/// to exchange information during queue pair setup.
+///
+/// It assumes you won't be using Send/Receive Verbs and doesn't post
+/// any receive buffers, although you certainly can if you want.
+///
+/// It assumes you will be running multiple processes per node, and
+/// gives each process two IDs ("ranks") and synchronization domains:
+///
+///  - one that is valid across all processes on all nodes in the job,
+///    where processes on the same node have contiguous ranks, and
+///
+///  - another that is local to each node/locale, to support
+///  - node-local barriers that other nodes do not participate in.
+///
+/// NOTE: there are a number of parameters that can be tuned for
+/// specific use cases below.
+///
+/// TODO/NOTE: it is possible to issue send requests too fast for the
+/// card. If that happens, this code will print an error and exit. I
+/// have come other code that detects this condition and blocks/limits
+/// the request rate instead; I'll integrate it if its needed.
+///
 class Verbs {
-public:
-  // MPIConnection reference for communication during queue pair and memory region setup
-  MPIConnection & m;
-  
-  // list of Verbs-capable devices
+  /// list of Verbs-capable devices
   ibv_device ** devices;
   int num_devices;
 
-  // info about chosen device
+  /// info about chosen device
   ibv_device * device;
   const char * device_name;
   uint64_t device_guid;
   ibv_device_attr device_attributes;
 
-  // info about chosen port
+  /// info about chosen port
   uint8_t port;
   ibv_port_attr port_attributes;
 
-  // device context 
+  /// device context, used for most Verbs operations
   ibv_context * context;
 
-  // protection domain for context
+  /// protection domain to go with context
   ibv_pd * protection_domain;
 
-  // constants for initializing queues
+  /// constants for initializing queues
   static const int completion_queue_depth = 256;
   static const int send_queue_depth    = 16;         // how many operations per queue should we be able to enqueue at a time?
   static const int receive_queue_depth = 1;          // only need 1 if we're just using RDMA ops
@@ -45,34 +66,36 @@ public:
   static const int retry_count = 6;                  // from Mellanox RDMA-Aware Programming manual; probably don't need to touch
   static const int rnr_retry = 0;                    // from Mellanox RDMA-Aware Programming manual; probably don't need to touch
 
-  // completion queue, shared across all endpoints
+  /// completion queue, shared across all endpoints/queue pairs
   ibv_cq * completion_queue;
 
-  // info about each endpoint (rank/process) in job
+  /// info about each endpoint (rank/process) in job
   struct Endpoint {
     uint16_t lid;        // InfiniBand address of node
     uint32_t qp_num;     // Queue pair number on node (like IP port number)
     ibv_qp * queue_pair;
   };
 
-  // array of endpoints, one per rank
+  /// array of endpoints, one per rank
   std::vector< Endpoint > endpoints;
 
 
   
-  // get local device context
+  /// Discover local Verbs-capable devices; choose one and prepare it for use.
   void initialize_device( const std::string desired_device_name, const int8_t desired_port );
 
-  // set up a queue pair for RDMA operations
-  void connect_queue_pair();
+  /// set up queue pairs for RDMA operations
+  void connect_queue_pairs();
 
-  // release resources on device in preparation for shutting down
+  /// release resources on device in preparation for shutting down
   void finalize_device();
   
 public:
+  /// MPIConnection reference for communication during queue pair and memory region setup
+  MPIConnection & m;
+  
   Verbs( MPIConnection & m, const std::string desired_device_name = "mlx4_0", const int8_t desired_port = 1 )
-    : m( m )
-    , devices( nullptr )
+    : devices( nullptr )
     , num_devices( 0 )
     , device( nullptr )
     , device_name( nullptr )
@@ -84,32 +107,35 @@ public:
     , protection_domain( nullptr )
     , completion_queue( nullptr )
     , endpoints()
+    , m( m )
   {
     initialize_device( desired_device_name, desired_port );
-    connect_queue_pair();
+    connect_queue_pairs();
   }
 
-  // call before ending process
+  /// call before ending process
   void finalize() {
     finalize_device();
   }
 
-  // destructor ensures finalize has been called
+  /// destructor ensures finalize has been called
   ~Verbs() {
     finalize();
   }
 
+  /// Accessor for protection domain
   ibv_pd * get_protection_domain() const { return protection_domain; }
-  
+
+  /// Register a region of memory with Verbs library
   ibv_mr * register_memory_region( void * base, size_t size );
 
-  // post a receive request for a remote rank
+  /// post a receive request for a remote rank
   void post_receive( int remote_rank, ibv_recv_wr * wr );
 
-  // post a send request to a remote rank
+  /// post a send request to a remote rank
   void post_send( int remote_rank, ibv_send_wr * wr );
 
-  // consume up to max_entries completion queue entries. Returns number of entries consumed.
+  /// consume up to max_entries completion queue entries. Returns number of entries consumed.
   int poll( int max_entries = 1 );
 
 };
