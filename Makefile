@@ -39,6 +39,11 @@ simple_write: simple_write.o $(COMMON_OBJS)
 # ensure we rebuild object file if headers or Makefile change
 simple_write.o: $(COMMON_DEPS)
 
+TARGETS+= simple_atomic_increment
+simple_atomic_increment: simple_atomic_increment.o $(COMMON_OBJS)
+# ensure we rebuild object file if headers or Makefile change
+simple_atomic_increment.o: $(COMMON_DEPS)
+
 
 
 
