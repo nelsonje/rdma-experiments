@@ -17,22 +17,22 @@
 int main( int argc, char * argv[] ) {
 
   // set up MPI communication between all processes in job
-  MPIConnection m( &argc, &argv );
+  MPIConnection mpi( &argc, &argv );
 
   // set up IBVerbs queue pairs between all processes in job
-  Verbs v( m );
+  Verbs verbs( mpi );
 
   // set up symmetric allocator
-  SymmetricAllocator s( m );
+  SymmetricAllocator allocator( mpi );
 
 #ifdef VERBOSE
-  std::cout << "hostname " << m.hostname()
-            << " MPI rank " << m.rank
-            << " ranks " << m.ranks
-            << " locale " << m.locale
-            << " locales " << m.locales
-            << " locale rank " << m.locale_rank
-            << " locale ranks " << m.locale_size
+  std::cout << "hostname " << mpi.hostname()
+            << " MPI rank " << mpi.rank
+            << " ranks " << mpi.ranks
+            << " locale " << mpi.locale
+            << " locales " << mpi.locales
+            << " locale rank " << mpi.locale_rank
+            << " locale ranks " << mpi.locale_size
             << " pid " << getpid()
             << "\n";
 #endif
@@ -52,12 +52,12 @@ int main( int argc, char * argv[] ) {
   // that it's at the same base address on every core, like this:
   
   // static int64_t remote_rank_data[ 1 << 20 ]; // 2^20 endpoints should be enough. :-)
-  // MemoryRegion dest_mr( v, &remote_rank_data[0], sizeof(remote_rank_data) );  // register allocated memory
+  // MemoryRegion dest_mr( verbs, &remote_rank_data[0], sizeof(remote_rank_data) );  // register allocated memory
 
   // Second, we can use my symmetric allocator code from Grappa to
   // dynamically allocate space at the same address on all cores.
-  int64_t * remote_rank_data = s.alloc< int64_t >( m.size );
-  MemoryRegion dest_mr( v, &remote_rank_data[0], sizeof(int64_t) * m.size ); // register allocated memory
+  int64_t * remote_rank_data = allocator.alloc< int64_t >( mpi.size );
+  MemoryRegion dest_mr( verbs, &remote_rank_data[0], sizeof(int64_t) * mpi.size ); // register allocated memory
 
   // The third option would be to allocate memory using normal
   // mechanisms on all cores, without caring what addresses the blocks
@@ -67,7 +67,7 @@ int main( int argc, char * argv[] ) {
   // I'm not doing it here.
   
   // initialize array
-  for( int64_t i = 0; i < m.size; ++i ) {
+  for( int64_t i = 0; i < mpi.size; ++i ) {
     remote_rank_data[i] = -1;
   }
   
@@ -78,13 +78,13 @@ int main( int argc, char * argv[] ) {
 
   // create storage for source data
   int64_t my_data;
-  MemoryRegion source_mr( v, &my_data, sizeof(my_data) );
+  MemoryRegion source_mr( verbs, &my_data, sizeof(my_data) );
   
   // write our rank data to remote ranks, one at a time
-  for( int i = 0; i < m.size; ++i ) {
+  for( int i = 0; i < mpi.size; ++i ) {
     // set value to write
     // (product of my rank and the remote rank)
-    my_data = i * m.rank; 
+    my_data = i * mpi.rank; 
     
     // point scatter/gather element at source data
     ibv_sge sge;
@@ -103,32 +103,32 @@ int main( int argc, char * argv[] ) {
     wr.imm_data = 0;   // unused here
     wr.opcode = IBV_WR_RDMA_WRITE;
     wr.send_flags = IBV_SEND_SIGNALED; // create completion queue entry once this operation has completed
-    wr.wr.rdma.remote_addr = (uintptr_t) &remote_rank_data[ m.rank ]; // write to this rank's slot of remote array
+    wr.wr.rdma.remote_addr = (uintptr_t) &remote_rank_data[ mpi.rank ]; // write to this rank's slot of remote array
     wr.wr.rdma.rkey = dest_mr.rkey( i );
 
     // hand WR to library/card to send
-    v.post_send( i, &wr );
+    verbs.post_send( i, &wr );
 
     // wait until WR is complete before continuing.
     //
     // If you don't want to wait, you must ensure that 1) source data
     // is unchanged until the WR has completed, and 2) you don't post
     // WRs too fast for the card.
-    while( !v.poll() ) {
+    while( !verbs.poll() ) {
       ; // poll until we get a completion queue entry
     }
   }
   
   // wait for everyone to finish all writes
-  m.barrier();
+  mpi.barrier();
 
   // check that values were written in our local array correctly
   bool pass = true;
-  for( int64_t i = 0; i < m.size; ++i ) {
-    int64_t expected_value = i * m.rank;
+  for( int64_t i = 0; i < mpi.size; ++i ) {
+    int64_t expected_value = i * mpi.rank;
     if( expected_value != remote_rank_data[i] ) {
       pass = false;
-      std::cout << "Rank " << m.rank
+      std::cout << "Rank " << mpi.rank
                 << " got bad data from rank " << i
                 << ": expected " << expected_value
                 << ", got " << remote_rank_data[i]
@@ -137,14 +137,15 @@ int main( int argc, char * argv[] ) {
   }
   
   // Use MPI reduction operation to AND together all ranks' "pass" value.
-  MPI_CHECK( MPI_Reduce( m.rank == 0 ? MPI_IN_PLACE : &pass, &pass, 1, MPI_C_BOOL,
+  bool overall_pass = false;
+  MPI_CHECK( MPI_Reduce( &pass, &overall_pass, 1, MPI_C_BOOL,
                          MPI_LAND,  // logical and
                          0,         // destination rank
-                         m.main_communicator_ ) );
+                         mpi.main_communicator_ ) );
 
   // have one rank check the reduced value
-  if( 0 == m.rank ){
-    if( pass ) {
+  if( 0 == mpi.rank ){
+    if( overall_pass ) {
       std::cout << "PASS: All ranks received correct data." << std::endl;
     } else {
       std::cout << "FAIL: Some rank(s) received incorrect data!" << std::endl;
