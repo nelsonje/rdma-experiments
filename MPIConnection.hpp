@@ -81,6 +81,11 @@ public:
   // call in all processes before exiting
   void finalize();
 
+  // destructor ensures finalize has been called
+  ~MPIConnection() {
+    finalize();
+  }
+
   // synchronize across all processes
   void barrier();
 

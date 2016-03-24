@@ -13,7 +13,7 @@ void Verbs::initialize_device( const std::string desired_device_name, const int8
 #ifdef VERBOSE
   // if more than one device, warn that we're choosing the named one.
   if ( num_devices > 1 ) {
-    std::cout << num_devices << " Verbs devices detected; searching for " << desired_device_name << "\n";
+    std::cout << num_devices << " Verbs devices detected; searching for " << desired_device_name << std::endl;
   }
 #endif
   
@@ -22,7 +22,7 @@ void Verbs::initialize_device( const std::string desired_device_name, const int8
 #ifdef VERBOSE
     std::cout << "Found Verbs device " << ibv_get_device_name( devices[i] )
               << " with guid " << (void*) ntohll( ibv_get_device_guid( devices[i] ) )
-              << "\n";
+              << std::endl;
 #endif
     if( (num_devices > 1) && (desired_device_name != ibv_get_device_name(devices[i])) ) {
       // if we are choosing between multiple devices and this one's name doesn't match, skip it.
@@ -55,7 +55,7 @@ void Verbs::initialize_device( const std::string desired_device_name, const int8
   // choose a port on the device and get port attributes
 #ifdef VERBOSE
   if( device_attributes.phys_port_cnt > 1 ) {
-    std::cout << (int) device_attributes.phys_port_cnt << " ports detected; using port " << (int) desired_port << "\n";
+    std::cout << (int) device_attributes.phys_port_cnt << " ports detected; using port " << (int) desired_port << std::endl;
   }
 #endif
   if( device_attributes.phys_port_cnt < desired_port ) {
@@ -291,3 +291,79 @@ void Verbs::connect_queue_pair() {
   // wait for everybody to have connected everything before proceeding
   m.barrier();
 }
+
+ibv_mr * Verbs::register_memory_region( void * base, size_t size ) {
+  ibv_mr * mr;
+  mr = ibv_reg_mr( protection_domain, 
+                   base, size,
+                   ( IBV_ACCESS_LOCAL_WRITE  | 
+                     IBV_ACCESS_REMOTE_WRITE | 
+                     IBV_ACCESS_REMOTE_READ  |
+                     IBV_ACCESS_REMOTE_ATOMIC) );
+  if( !mr ) {
+    std::cerr << "Error registring memory region at " << base << " of " << size << " bytes!\n";
+    exit(1);
+  }
+  
+  return mr;
+}
+
+void Verbs::post_receive( int remote_rank, ibv_recv_wr * wr ) {
+  ibv_recv_wr * bad_wr = nullptr;
+
+  int retval = ibv_post_recv( endpoints[remote_rank].queue_pair, wr, &bad_wr );
+  if( retval < 0 ) {
+    perror( "Error posting receive WR" );
+    exit(1);
+  }
+  
+  if( bad_wr ) {
+    std::cerr << "Error posting receive WR at WR " << bad_wr << " (first WR in list was " << wr << ")";
+    exit(1);
+  }
+}
+
+void Verbs::post_send( int remote_rank, ibv_send_wr * wr ) {
+  ibv_send_wr * bad_wr = nullptr;
+
+  int retval = ibv_post_send( endpoints[remote_rank].queue_pair, wr, &bad_wr );
+  if( retval < 0 ) {
+    perror( "Error posting receive WR" );
+    exit(1);
+  }
+  
+  if( bad_wr ) {
+    std::cerr << "Error posting send WR at WR " << bad_wr << " (first WR in list was " << wr << ")";
+    exit(1);
+  }
+}
+
+int Verbs::poll( int max_entries ) {
+  struct ibv_wc wc;
+  int retval = ibv_poll_cq( completion_queue, max_entries, &wc );
+  if( retval < 0 ) {
+    std::cerr << "Failed polling completion queue with status " << retval << "\n";
+    exit(1);
+  } else if( retval > 0 ) {
+    if( wc.status == IBV_WC_SUCCESS ) {
+      if( wc.opcode == IBV_WC_RDMA_WRITE ) {
+#ifdef VERBOSE
+        std::cout << "Got completion for WR ID " << wc.wr_id << "\n" << std::endl;
+#endif
+      } else if( wc.opcode == IBV_WC_RECV_RDMA_WITH_IMM ) {
+#ifdef VERBOSE
+        std::cout << "Got completion for WR ID " << wc.wr_id << " with immediate value " << (void*) ((int64_t) wc.imm_data) << std::endl;
+#endif
+      } else {
+#ifdef VERBOSE
+        std::cout << "Got completion for something with id " << ((int64_t) wc.wr_id) << std::endl;
+#endif
+      }
+    } else {
+      std::cerr << "Got completion for " << (void*) wc.wr_id << " with status " << ibv_wc_status_str( wc.status ) << "\n";
+      exit(1);
+    }
+  }
+  return retval;
+}
+
