@@ -30,11 +30,11 @@ class MPIConnection {
   int locale_rank_; // node-local ID of this core/process
   int locale_size_; // # cores/processes on this node
 
-  // MPI communicators
+public:
+
+  // MPI communicators, made public to enable other classes to use them
   MPI_Comm main_communicator_;   // job-wide communicator
   MPI_Comm locale_communicator_; // node-local communicator
-
-public:
 
   MPIConnection()
     : rank_(-1)
@@ -57,6 +57,26 @@ public:
 
   // call in all processes before doing anything with this object
   void init( int * argc_p, char ** argv_p[] );
+
+  // alternative constructor that calls init directly
+  MPIConnection( int * argc_p, char ** argv_p[] )
+    : rank_(-1)
+    , size_(-1)
+    , locales_(-1)
+    , locale_(-1)
+    , locale_rank_(-1)
+    , locale_size_(-1)
+    , rank(rank_)
+    , size(size_)
+    , ranks(size_)
+    , locales(locales_)
+    , locale(locale_)
+    , locale_rank(locale_rank_)
+    , locale_size(locale_size_)
+    , locale_ranks(locale_size_)
+  {
+    init( argc_p, argv_p );
+  }
 
   // call in all processes before exiting
   void finalize();

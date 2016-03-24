@@ -12,11 +12,8 @@
 
 int main( int argc, char * argv[] ) {
 
-  MPIConnection m;
-  m.init( &argc, &argv );
-
-  Verbs v(m);
-  v.init();
+  MPIConnection m( &argc, &argv );
+  Verbs v( m );
   
   m.barrier();
 
