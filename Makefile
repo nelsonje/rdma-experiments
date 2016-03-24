@@ -1,5 +1,3 @@
-
-
 CXX=mpicxx
 CC=mpicxx
 LD=mpicxx
@@ -11,36 +9,42 @@ CXXFLAGS+= -g -O2 -std=c++11 -Wall
 #CXXFLAGS+= -DVERBOSE
 
 # linker flags (not libraries)
-#LDFLAGS+=
+LDFLAGS+=
 
 # libraries to link agains
 LDLIBS+= -libverbs
 
-# add header files and related things here
-DEPS= Makefile MPIConnection.hpp Verbs.hpp MemoryRegion.hpp
+# add header files and related things to this variable
+COMMON_DEPS= Makefile MPIConnection.hpp Verbs.hpp MemoryRegion.hpp
 
-# add object files everyone uses
-OBJ= MPIConnection.o Verbs.o
+# add object files everyone uses to this variable
+COMMON_OBJS= MPIConnection.o Verbs.o
 
-# add targets to be cleaned up here
-TARGETS= simple_write
+# targets should be added to this variable (for cleanup)
+TARGETS= 
+
+
 
 #
 # this Makefile uses implicit build rules.
 #
-# just add two rules like the following for any new app, and add any
-# header dependences to DEPS and object file dependences to OBJ. They
-# will be built automatically.
+# just add three lines like the following for any new app, and add any
+# header dependences to COMMON_DEPS and object file dependences to
+# COMMON_OBJS. They will be built automatically.
 #
 
 # rules for an application with a main() function
-simple_write: simple_write.o $(OBJ)
+TARGETS+= simple_write
+simple_write: simple_write.o $(COMMON_OBJS)
 # ensure we rebuild object file if headers or Makefile change
-simple_write.o: $(DEPS)
+simple_write.o: $(COMMON_DEPS)
+
+
+
 
 
 # overly-broad rule to ensure object files are rebuilt if header files change
-$(OBJ): $(DEPS)
+$(COMMON_OBJS): $(COMMON_DEPS)
 
 clean:
-	rm -f $(OBJ) $(TARGETS) $(TARGETS)
+	rm -f $(COMMON_OBJS) $(TARGETS) $(TARGETS:%=%.o)
