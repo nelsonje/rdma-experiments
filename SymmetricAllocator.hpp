@@ -56,7 +56,7 @@ public:
   T * alloc( size_t n = 1 ) {
     auto byte_size = n * sizeof(T);
     void * p = Grappa::impl::dlmalloc( byte_size );
-    MPI_CHECK( MPI_Barrier( m.main_communicator_ ) );
+    m.barrier();
     return reinterpret_cast< T * >( p );
   }
   
@@ -64,7 +64,7 @@ public:
   /// this function simultaneously.
   template< typename T >
   void free( T * t ) {
-    MPI_CHECK( MPI_Barrier( m.main_communicator_ ) );
+    m.barrier();
     Grappa::impl::dlfree( t );
   }
 };
