@@ -348,7 +348,7 @@ int Verbs::poll( int max_entries ) {
     if( wc.status == IBV_WC_SUCCESS ) {
       if( wc.opcode == IBV_WC_RDMA_WRITE ) {
 #ifdef VERBOSE
-        std::cout << "Got completion for WR ID " << wc.wr_id << "\n" << std::endl;
+        std::cout << "Got completion for WR ID " << wc.wr_id << std::endl;
 #endif
       } else if( wc.opcode == IBV_WC_RECV_RDMA_WITH_IMM ) {
 #ifdef VERBOSE
