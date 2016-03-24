@@ -8,6 +8,7 @@
 #include "MPIConnection.hpp"
 #include "Verbs.hpp"
 #include "MemoryRegion.hpp"
+#include "SymmetricAllocator.hpp"
 
 #include <cstring>
 #include <sys/types.h>
@@ -20,6 +21,9 @@ int main( int argc, char * argv[] ) {
 
   // set up IBVerbs queue pairs between all processes in job
   Verbs v( m );
+
+  // set up symmetric allocator
+  SymmetricAllocator s( m );
 
 #ifdef VERBOSE
   std::cout << "hostname " << m.hostname()
@@ -41,21 +45,36 @@ int main( int argc, char * argv[] ) {
   
   // create space to store data from remote ranks
   //
-  // This is created statically with a fixed size so that it's at the
-  // same base address on every core.
+  // There are at least three options for doing this. I'll illustrate
+  // two here.
   //
-  // You can avoid this by using MMAP to get memory at a specified
-  // address, or by communicating base addresses between ranks.
-  static int64_t remote_rank_data[ 1 << 20 ]; // 2^20 endpoints should be enough. :-)
+  // First, we can allocate the data statically with a fixed size so
+  // that it's at the same base address on every core, like this:
+  
+  // static int64_t remote_rank_data[ 1 << 20 ]; // 2^20 endpoints should be enough. :-)
+  // MemoryRegion dest_mr( v, &remote_rank_data[0], sizeof(remote_rank_data) );  // register allocated memory
+
+  // Second, we can use my symmetric allocator code from Grappa to
+  // dynamically allocate space at the same address on all cores.
+  int64_t * remote_rank_data = s.alloc< int64_t >( m.size );
+  MemoryRegion dest_mr( v, &remote_rank_data[0], sizeof(int64_t) * m.size ); // register allocated memory
+
+  // The third option would be to allocate memory using normal
+  // mechanisms on all cores, without caring what addresses the blocks
+  // were allocated at, and then communicate each base addresses to
+  // all other cores so that they can form a proper virtual address
+  // for whatever core they're writing to. This gets a little ugly, so
+  // I'm not doing it here.
+  
+  // initialize array
   for( int64_t i = 0; i < m.size; ++i ) {
-    remote_rank_data[i] = -1; // initialize array
+    remote_rank_data[i] = -1;
   }
+  
 #ifdef VERBOSE
   std::cout << "Base address of remote_rank_data is " << &remote_rank_data[0] << std::endl;
 #endif
     
-  // register memory region for this array
-  MemoryRegion dest_mr( v, &remote_rank_data[0], sizeof(remote_rank_data) );
 
   // create storage for source data
   int64_t my_data;

@@ -15,10 +15,10 @@ LDFLAGS+=
 LDLIBS+= -libverbs
 
 # add header files and related things to this variable
-COMMON_DEPS= Makefile MPIConnection.hpp Verbs.hpp MemoryRegion.hpp
+COMMON_DEPS= Makefile MPIConnection.hpp Verbs.hpp MemoryRegion.hpp SymmetricAllocator.hpp SymmetricAllocatorImplementation.hpp 
 
 # add object files everyone uses to this variable
-COMMON_OBJS= MPIConnection.o Verbs.o
+COMMON_OBJS= MPIConnection.o Verbs.o SymmetricAllocator.o
 
 # targets should be added to this variable (for cleanup)
 TARGETS= 
