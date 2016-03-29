@@ -44,6 +44,10 @@ simple_atomic_increment: simple_atomic_increment.o $(COMMON_OBJS)
 # ensure we rebuild object file if headers or Makefile change
 simple_atomic_increment.o: $(COMMON_DEPS)
 
+TARGETS+= simple_read
+simple_read: simple_read.o $(COMMON_OBJS)
+# ensure we rebuild object file if headers or Makefile change
+simple_read.o: $(COMMON_DEPS)
 
 
 
