@@ -97,9 +97,15 @@ public:
   /// let the destructor do it for you.
   void finalize();
 
-  /// Destructor ensures finalize has been called.
+  /// Destructor warns you if finalize has not yet been called.
   ~MPIConnection() {
-    finalize();
+    int finalized = 0;
+    MPI_CHECK( MPI_Finalized( &finalized ) );
+    if( !finalized ) {
+      std::cerr << "Warning: you should probably call finalize() before MPIConnection goes out of scope, or you may occassionally see deadlock." << std::endl;
+      // try to finalize, but it probably won't work
+      finalize();
+    }
   }
 
   /// Synchronize across all processes

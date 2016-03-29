@@ -148,5 +148,7 @@ int main( int argc, char * argv[] ) {
     }
   }
 
+  mpi.finalize();
+
   return 0; 
 }
