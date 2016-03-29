@@ -81,8 +81,15 @@ int main( int argc, char * argv[] ) {
 
   // create storage for destination data
   int64_t my_data;
-  MemoryRegion dest_mr( verbs, &my_data, sizeof(my_data) );
 
+  // we can use the SymmetricMemoryRegion wrapper since all the cores
+  // are executing this right now; since this is for local access
+  // only, we'll just ignore the rkeys it exchanges.
+  //SymmetricMemoryRegion dest_mr( verbs, &my_data, sizeof(my_data) );
+
+  // alternatively, you could ignore my SymmetricMemoryRegion wrapper
+  // and call the Verbs memory region registration wrapper instead
+  ibv_mr * dest_mr_p = verbs.register_memory_region( &my_data, sizeof(my_data) );
   
   // assume that we'll get all values correctly; check as we receive them in the loop below.
   bool pass = true;
@@ -95,9 +102,16 @@ int main( int argc, char * argv[] ) {
     // point scatter/gather element at destination data
     ibv_sge sge;
     std::memset(&sge, 0, sizeof(sge));
-    sge.addr = (uintptr_t) dest_mr.base();
-    sge.length = dest_mr.size();
-    sge.lkey = dest_mr.lkey();
+
+    // code that goes with SymmetricMemoryRegion above
+    //sge.addr = (uintptr_t) dest_mr.base();
+    //sge.length = dest_mr.size();
+    //sge.lkey = dest_mr.lkey();
+    
+    // code that goes with ibv_mr allocation instead of SymmetricMemoryRegion above
+    sge.addr = (uintptr_t) &my_data;
+    sge.length = sizeof(my_data);
+    sge.lkey = dest_mr_p->lkey; // local memory region key
 
     // create work request for RDMA read
     ibv_send_wr wr;
