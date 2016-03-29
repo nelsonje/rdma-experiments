@@ -2,14 +2,17 @@
 
 #include "Verbs.hpp"
 
-class MemoryRegion {
+/// This class is a wrapper around the Verbs memory region
+/// registration API for regions that start at the same address on
+/// each core. The constructor should be called on all cores.
+class SymmetricMemoryRegion {
 private:
   Verbs & v;
   std::vector< uint32_t > rkeys;
   ibv_mr * mr;
   
 public:
-  MemoryRegion( Verbs & v, void * base, size_t size )
+  SymmetricMemoryRegion( Verbs & v, void * base, size_t size )
     : v(v)
     , rkeys( v.m.size )
     , mr( nullptr )
@@ -33,7 +36,7 @@ public:
     v.m.barrier();
   }
 
-  ~MemoryRegion() {
+  ~SymmetricMemoryRegion() {
     int retval = ibv_dereg_mr( mr );
     if( retval != 0 ) {
       perror( "Memory deregistration failed" );

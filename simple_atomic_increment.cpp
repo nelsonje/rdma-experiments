@@ -7,7 +7,7 @@
 
 #include "MPIConnection.hpp"
 #include "Verbs.hpp"
-#include "MemoryRegion.hpp"
+#include "SymmetricMemoryRegion.hpp"
 
 #include <cstring>
 #include <sys/types.h>
@@ -58,11 +58,11 @@ int main( int argc, char * argv[] ) {
 #endif
     
   // register memory region for this array
-  MemoryRegion dest_mr( verbs, &remote_rank_data[0], sizeof(remote_rank_data) );
+  SymmetricMemoryRegion dest_mr( verbs, &remote_rank_data[0], sizeof(remote_rank_data) );
 
   // create storage for source data
   int64_t my_data;
-  MemoryRegion source_mr( verbs, &my_data, sizeof(my_data) );
+  SymmetricMemoryRegion source_mr( verbs, &my_data, sizeof(my_data) );
   
   // write our rank data to remote ranks, one at a time
   for( int i = 0; i < mpi.size; ++i ) {

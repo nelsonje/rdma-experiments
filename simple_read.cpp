@@ -7,7 +7,7 @@
 
 #include "MPIConnection.hpp"
 #include "Verbs.hpp"
-#include "MemoryRegion.hpp"
+#include "SymmetricMemoryRegion.hpp"
 #include "SymmetricAllocator.hpp"
 
 #include <cstring>
@@ -52,12 +52,12 @@ int main( int argc, char * argv[] ) {
   // that it's at the same base address on every core, like this:
   
   // static int64_t remote_rank_data[ 1 << 20 ]; // 2^20 endpoints should be enough. :-)
-  // MemoryRegion source_mr( verbs, &remote_rank_data[0], sizeof(remote_rank_data) );  // register allocated memory
+  // SymmetricMemoryRegion source_mr( verbs, &remote_rank_data[0], sizeof(remote_rank_data) );  // register allocated memory
 
   // Second, we can use my symmetric allocator code from Grappa to
   // dynamically allocate space at the same address on all cores.
   int64_t * remote_rank_data = allocator.alloc< int64_t >( mpi.size );
-  MemoryRegion source_mr( verbs, &remote_rank_data[0], sizeof(int64_t) * mpi.size ); // register allocated memory
+  SymmetricMemoryRegion source_mr( verbs, &remote_rank_data[0], sizeof(int64_t) * mpi.size ); // register allocated memory
 
   // The third option would be to allocate memory using normal
   // mechanisms on all cores, without caring what addresses the blocks
