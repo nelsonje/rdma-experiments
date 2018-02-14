@@ -6,7 +6,7 @@ LD=mpicxx
 CXXFLAGS+= -g -O2 -std=c++11 -Wall
 
 # uncomment this to enable verbose logging
-#CXXFLAGS+= -DVERBOSE
+CXXFLAGS+= -DVERBOSE
 
 # linker flags (not libraries)
 LDFLAGS+=
@@ -49,6 +49,16 @@ simple_read: simple_read.o $(COMMON_OBJS)
 # ensure we rebuild object file if headers or Makefile change
 simple_read.o: $(COMMON_DEPS)
 
+
+TARGETS+= coll
+coll: coll.o $(COMMON_OBJS)
+# ensure we rebuild object file if headers or Makefile change
+coll.o: $(COMMON_DEPS)
+
+TARGETS+= standalone_coll
+standalone_coll: standalone_coll.o
+# ensure we rebuild object file if headers or Makefile change
+standalone_coll.o: Makefile
 
 
 
