@@ -166,8 +166,8 @@ int main( int argc, char * argv[] ) {
             << "\n   max_srq_wr: " << exp_device_attributes.max_srq_wr
             << "\n   max_srq_sge: " << exp_device_attributes.max_srq_sge
             << "\n   max_pkeys: " << exp_device_attributes.max_pkeys
-            << "\n   local_ca_ack_delay: " << exp_device_attributes.local_ca_ack_delay
-            << "\n   phys_port_cnt: " << exp_device_attributes.phys_port_cnt
+            << "\n   local_ca_ack_delay: " << (int)exp_device_attributes.local_ca_ack_delay
+            << "\n   phys_port_cnt: " << (int)exp_device_attributes.phys_port_cnt
             << "\n   comp_mask: " << (void*)exp_device_attributes.comp_mask
             << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_CALC_CAP: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_CALC_CAP)
             << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_WITH_TIMESTAMP_MASK: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_WITH_TIMESTAMP_MASK)
@@ -197,16 +197,16 @@ int main( int argc, char * argv[] ) {
             << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_SW_PARSING_CAPS: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_SW_PARSING_CAPS)
             << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_ODP_MAX_SIZE: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_ODP_MAX_SIZE)
             << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_TM_CAPS: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_TM_CAPS)
-            << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_TUNNEL_OFFLOADS_CAPS: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_TUNNEL_OFFLOADS_CAPS)
-            << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_MAX_DM_SIZE: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_MAX_DM_SIZE)
+            // << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_TUNNEL_OFFLOADS_CAPS: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_TUNNEL_OFFLOADS_CAPS)
+            // << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_MAX_DM_SIZE: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_MAX_DM_SIZE)
             << "\n   comp_mask & IBV_EXP_DEVICE_ATTR_RESERVED: " << !!(exp_device_attributes.comp_mask & IBV_EXP_DEVICE_ATTR_RESERVED)
 
     // struct ibv_exp_device_calc_cap calc_cap;
-            << "\n   calc_cap.data_types: " << exp_device_attributes.calc_cap.data_types
-            << "\n   calc_cap.data_sizes: " << exp_device_attributes.calc_cap.data_sizes
-            << "\n   calc_cap.int_ops: " << exp_device_attributes.calc_cap.int_ops
-            << "\n   calc_cap.uint_ops: " << exp_device_attributes.calc_cap.uint_ops
-            << "\n   calc_cap.fp_ops: " << exp_device_attributes.calc_cap.fp_ops
+            << "\n   calc_cap.data_types: " << (void*)exp_device_attributes.calc_cap.data_types
+            << "\n   calc_cap.data_sizes: " << (void*)exp_device_attributes.calc_cap.data_sizes
+            << "\n   calc_cap.int_ops: " << (void*)exp_device_attributes.calc_cap.int_ops
+            << "\n   calc_cap.uint_ops: " << (void*)exp_device_attributes.calc_cap.uint_ops
+            << "\n   calc_cap.fp_ops: " << (void*)exp_device_attributes.calc_cap.fp_ops
 
             << "\n   timestamp_mask: " << (void*)exp_device_attributes.timestamp_mask
             << "\n   hca_core_clock: " << exp_device_attributes.hca_core_clock
@@ -245,7 +245,7 @@ int main( int argc, char * argv[] ) {
             << "\n   exp_device_cap_flags & IBV_EXP_DEVICE_SCATTER_FCS: " << !!(exp_device_attributes.exp_device_cap_flags & IBV_EXP_DEVICE_SCATTER_FCS)
             << "\n   exp_device_cap_flags & IBV_EXP_DEVICE_MEM_WINDOW: " << !!(exp_device_attributes.exp_device_cap_flags & IBV_EXP_DEVICE_MEM_WINDOW)
             << "\n   exp_device_cap_flags & IBV_EXP_DEVICE_WQ_DELAY_DROP: " << !!(exp_device_attributes.exp_device_cap_flags & IBV_EXP_DEVICE_WQ_DELAY_DROP)
-            << "\n   exp_device_cap_flags & IBV_EXP_DEVICE_PHYSICAL_RANGE_MR: " << !!(exp_device_attributes.exp_device_cap_flags & IBV_EXP_DEVICE_PHYSICAL_RANGE_MR)
+            // << "\n   exp_device_cap_flags & IBV_EXP_DEVICE_PHYSICAL_RANGE_MR: " << !!(exp_device_attributes.exp_device_cap_flags & IBV_EXP_DEVICE_PHYSICAL_RANGE_MR)
             << "\n   exp_device_cap_flags & IBV_EXP_DEVICE_MEM_MGT_EXTENSIONS: " << !!(exp_device_attributes.exp_device_cap_flags & IBV_EXP_DEVICE_MEM_MGT_EXTENSIONS)
             << "\n   exp_device_cap_flags & IBV_EXP_DEVICE_DC_INFO: " << !!(exp_device_attributes.exp_device_cap_flags & IBV_EXP_DEVICE_DC_INFO)
             << "\n   exp_device_cap_flags & IBV_EXP_DEVICE_MW_TYPE_2A: " << !!(exp_device_attributes.exp_device_cap_flags & IBV_EXP_DEVICE_MW_TYPE_2A)
@@ -286,7 +286,7 @@ int main( int argc, char * argv[] ) {
     //struct ibv_exp_rx_hash_caps	rx_hash_caps;
             << "\n   rx_hash_caps.max_rwq_indirection_tables: " << exp_device_attributes.rx_hash_caps.max_rwq_indirection_tables
             << "\n   rx_hash_caps.max_rwq_indirection_table_size: " << exp_device_attributes.rx_hash_caps.max_rwq_indirection_table_size
-            << "\n   rx_hash_caps.supported_hash_functions: " << exp_device_attributes.rx_hash_caps.supported_hash_functions
+            << "\n   rx_hash_caps.supported_hash_functions: " << (int)exp_device_attributes.rx_hash_caps.supported_hash_functions
             << "\n   rx_hash_caps.supported_packet_fields: " << exp_device_attributes.rx_hash_caps.supported_packet_fields
             << "\n   rx_hash_caps.supported_qps: " << exp_device_attributes.rx_hash_caps.supported_qps
 
@@ -296,10 +296,10 @@ int main( int argc, char * argv[] ) {
     //struct ibv_exp_mp_rq_caps	mp_rq_caps;
             << "\n   mp_rq_caps.supported_qps: " << exp_device_attributes.mp_rq_caps.supported_qps
             << "\n   mp_rq_caps.allowed_shifts: " << exp_device_attributes.mp_rq_caps.allowed_shifts
-            << "\n   mp_rq_caps.min_single_wqe_log_num_of_strides: " << exp_device_attributes.mp_rq_caps.min_single_wqe_log_num_of_strides
-            << "\n   mp_rq_caps.max_single_wqe_log_num_of_strides: " << exp_device_attributes.mp_rq_caps.max_single_wqe_log_num_of_strides
-            << "\n   mp_rq_caps.min_single_stride_log_num_of_bytes: " << exp_device_attributes.mp_rq_caps.min_single_stride_log_num_of_bytes
-            << "\n   mp_rq_caps.max_single_stride_log_num_of_bytes: " << exp_device_attributes.mp_rq_caps.max_single_stride_log_num_of_bytes
+            << "\n   mp_rq_caps.min_single_wqe_log_num_of_strides: " << (int)exp_device_attributes.mp_rq_caps.min_single_wqe_log_num_of_strides
+            << "\n   mp_rq_caps.max_single_wqe_log_num_of_strides: " << (int)exp_device_attributes.mp_rq_caps.max_single_wqe_log_num_of_strides
+            << "\n   mp_rq_caps.min_single_stride_log_num_of_bytes: " << (int)exp_device_attributes.mp_rq_caps.min_single_stride_log_num_of_bytes
+            << "\n   mp_rq_caps.max_single_stride_log_num_of_bytes: " << (int)exp_device_attributes.mp_rq_caps.max_single_stride_log_num_of_bytes
 
             << "\n   wq_vlan_offloads_cap: " << exp_device_attributes.wq_vlan_offloads_cap
 
@@ -308,10 +308,10 @@ int main( int argc, char * argv[] ) {
             << "\n   ec_caps.max_ec_calc_inflight_calcs: " << exp_device_attributes.ec_caps.max_ec_calc_inflight_calcs
 
     //struct ibv_exp_masked_atomic_params masked_atomic;
-            << "\n   masked_atomic.max_fa_bit_boundary: " << exp_device_attributes.masked_atomic.max_fa_bit_boundary
-            << "\n   masked_atomic.log_max_atomic_inline: " << exp_device_attributes.masked_atomic.log_max_atomic_inline
-            << "\n   masked_atomic.masked_log_atomic_arg_sizes: " << exp_device_attributes.masked_atomic.masked_log_atomic_arg_sizes
-            << "\n   masked_atomic.masked_log_atomic_arg_sizes_network_endianness: " << exp_device_attributes.masked_atomic.masked_log_atomic_arg_sizes_network_endianness
+            << "\n   masked_atomic.max_fa_bit_boundary: " << (void*)exp_device_attributes.masked_atomic.max_fa_bit_boundary
+            << "\n   masked_atomic.log_max_atomic_inline: " << (void*)exp_device_attributes.masked_atomic.log_max_atomic_inline
+            << "\n   masked_atomic.masked_log_atomic_arg_sizes: " << (void*)exp_device_attributes.masked_atomic.masked_log_atomic_arg_sizes
+            << "\n   masked_atomic.masked_log_atomic_arg_sizes_network_endianness: " << (void*)exp_device_attributes.masked_atomic.masked_log_atomic_arg_sizes_network_endianness
 
         /*
          * The alignment of the padding end address.
@@ -352,12 +352,12 @@ int main( int argc, char * argv[] ) {
             << "\n   tm_caps.max_num_tags: " << exp_device_attributes.tm_caps.max_num_tags
             << "\n   tm_caps.capability_flags: " << (void*)exp_device_attributes.tm_caps.capability_flags
             << "\n   tm_caps.capability_flags & IBV_EXP_TM_CAP_RC: " << !!(exp_device_attributes.tm_caps.capability_flags & IBV_EXP_TM_CAP_RC)
-            << "\n   tm_caps.capability_flags & IBV_EXP_TM_CAP_DC: " << !!(exp_device_attributes.tm_caps.capability_flags & IBV_EXP_TM_CAP_DC)
+            // << "\n   tm_caps.capability_flags & IBV_EXP_TM_CAP_DC: " << !!(exp_device_attributes.tm_caps.capability_flags & IBV_EXP_TM_CAP_DC)
             << "\n   tm_caps.max_ops: " << exp_device_attributes.tm_caps.max_ops
             << "\n   tm_caps.max_sge: " << exp_device_attributes.tm_caps.max_sge
 
-            << "\n   tunnel_offloads_caps: " << exp_device_attributes.tunnel_offloads_caps
-            << "\n   max_dm_size: " << exp_device_attributes.max_dm_size
+            // << "\n   tunnel_offloads_caps: " << exp_device_attributes.tunnel_offloads_caps
+            // << "\n   max_dm_size: " << exp_device_attributes.max_dm_size
             << std::endl;
 
 
